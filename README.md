@@ -54,3 +54,16 @@ wrangler deploy
 Deployed cf-hello-world triggers
   https://cf-hello-world.<subdomain>.workers.dev
 ```
+
+## CI/CD(mainブランチへのpushで自動デプロイ)
+
+`.github/workflows/deploy.yml`により、`main`ブランチへのpush時に自動で`wrangler deploy`が実行される。
+
+事前準備(初回のみ):
+
+1. Cloudflareダッシュボードの"My Profile" → "API Tokens"で、対象Workerに`Editor`権限を持つAPIトークンを発行
+2. GitHubリポジトリに`CLOUDFLARE_API_TOKEN`という名前でSecretsに登録
+
+```
+gh secret set CLOUDFLARE_API_TOKEN
+```
