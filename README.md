@@ -59,11 +59,29 @@ Deployed cf-hello-world triggers
 
 `.github/workflows/deploy.yml`により、`main`ブランチへのpush時に自動で`wrangler deploy`が実行される。
 
-事前準備(初回のみ):
+### 事前準備(初回のみ)
 
 1. Cloudflareダッシュボードの"My Profile" → "API Tokens"で、対象Workerに`Editor`権限を持つAPIトークンを発行
-2. GitHubリポジトリに`CLOUDFLARE_API_TOKEN`という名前でSecretsに登録
+   - ページ下部にR2用のアクセスキー・S3エンドポイントが同時に表示されることがあるが、R2を使わない場合は不要(保存しなくてよい)
+2. 発行完了後に表示されるモーダルは要注意
+   - **初期表示ではモーダル上部に"アカウント ID"のハッシュ値が見えており、これをAPIトークンと誤認しやすい**
+   - モーダル内にスクロールがあり、その下に本来コピーすべき**APIトークン**の値が表示される
+   - スクロールに気づかずアカウントIDだけコピーしてモーダルを閉じてしまうと、正しいトークンは再表示できない(再発行が必要)ので、必ず下までスクロールしてAPIトークンの値を確認してからコピー・クローズすること
+3. GitHubリポジトリに`CLOUDFLARE_API_TOKEN`という名前でSecretsに登録
 
 ```
-gh secret set CLOUDFLARE_API_TOKEN
+gh secret set CLOUDFLARE_API_TOKEN --body "<コピーしたトークン>"
 ```
+
+### workflowの設定ポイント
+
+`cloudflare/wrangler-action@v3`使用時のハマりどころ:
+
+- `wranglerVersion`を明示的に`"4"`指定すること。指定しないと古いバージョン(3系)がインストールされ、`wrangler.jsonc`(JSONC)の`main`フィールドを読めず`Missing entry-point`エラーになる
+- トークンは`env: CLOUDFLARE_API_TOKEN: ...`ではなく、`with: apiToken: ...`で渡すこと。env経由だと`wrangler`側に渡らず`CLOUDFLARE_API_TOKEN`未設定エラーになる
+
+### トラブルシュート
+
+- `Invalid format for Authorization header [code: 6111]` → トークンの値が誤っている(APIトークンではなくアカウントIDを貼っていた等)。ダッシュボードでAPIトークンの値を再確認して登録し直す
+- Secretsが更新されたか怪しい場合は`gh secret list`の更新日時で確認する
+- workflowを手動で再実行したい場合、`workflow_dispatch`トリガーが未設定なので`git commit --allow-empty -m "trigger"`等でpushして動かす
