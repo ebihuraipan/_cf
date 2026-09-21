@@ -13,8 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: nuxt
+        run: bun install
+
+      - name: Build Nuxt
+        working-directory: nuxt
+        run: bun run build
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           wranglerVersion: "4"
+          workingDirectory: nuxt
