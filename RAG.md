@@ -11,6 +11,22 @@ Vectorize + Workers AIによるRAG(検索拡張生成)デモ。Nuxt/Cloudflare�
 
 ## エンドポイント
 
+### `POST /api/auth/login` — 合言葉によるログイン
+
+`nuxt/server/api/auth/login.post.ts`。`{"passphrase": "..."}`を`env.PASSPHRASE`(secret)と比較し、一致すればh3の`useSession`(`nuxt/server/utils/session.ts`)でsealed cookieセッションに`{authenticated: true}`を保存。サーバー側ストレージ(KV等)は不要。
+
+```bash
+curl -c cookie.txt -X POST http://localhost:8787/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"passphrase": "<合言葉>"}'
+```
+
+```json
+{"ok": true}
+```
+
+不一致なら401。以降`/api/ingest`・`/api/query`は`curl -b cookie.txt ...`のように発行済みcookieを付けてアクセスする。
+
 ### `POST /api/ingest` — 文書登録
 
 `nuxt/server/api/ingest.post.ts`。`nuxt/server/utils/chunk.ts`で段落単位→500文字区切りにチャンク分割し、`bge-m3`で埋め込み生成後、`cf-rag-index-ja`に登録(`metadata.text`に元チャンクを保持)。
@@ -57,6 +73,8 @@ bunx wrangler types   # wrangler.jsonc変更後は再実行
 
 ## 注意点
 
+- **RAG API(`/api/ingest`, `/api/query`)は合言葉認証が必要**: `nuxt/server/middleware/auth.ts`が全リクエストを見て、この2パスのみをガード(`/api/auth/login`自体はガード対象外)。未認証時は`401`ではなく`404`を返し、保護対象の存在自体を伏せる
+- **secretはコミットしない**: `PASSPHRASE`(合言葉本体)と`SESSION_SECRET`(セッションcookie署名用、32byte以上のランダム文字列)の2つが必要。ローカルは`nuxt/.dev.vars`(gitignore済み、`wrangler dev`が自動読み込み)、本番は`bunx wrangler secret put PASSPHRASE` / `bunx wrangler secret put SESSION_SECRET`で設定する。`.dev.vars`を作成/変更したら`bunx wrangler types`を再実行して`Env`型に反映させること
 - **Vectorizeはlocal dev非対応**: `wrangler.jsonc`のvectorize bindingに`"remote": true`を指定し、ローカル実行時も本物のインデックスにリモート接続している
 - **書き込み反映のタイムラグ**: `ingest`直後に`query`すると、登録したばかりのチャンクが検索結果に出ないことがある(数秒〜数十秒かかる場合あり)。画面を作る際はUXとして考慮が必要
 - **Workers AIのモデルは定期的に廃止される**: 実装・変更時は`bunx wrangler ai models`で現行モデル一覧を確認すること

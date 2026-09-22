@@ -62,6 +62,28 @@ this server binary is "YYYY-MM-DD".
 
 Cloudflareダッシュボードの"Workers & Pages"のページで、サブドメイン名(任意の文字列でよい)を登録する。
 
+## 合言葉認証用secretの登録(RAG API保護・初回のみ)
+
+`/api/ingest`・`/api/query`は合言葉認証で保護されている(ローカルは`nuxt/.dev.vars`で設定、
+`.gitignore`済みなのでリポジトリには含まれない)。本番デプロイ前に、同じ内容をCloudflare側の
+secretとして登録する必要がある。
+
+```
+cd nuxt
+bunx wrangler secret put PASSPHRASE
+bunx wrangler secret put SESSION_SECRET
+```
+
+いずれも対話的に値の入力を求められるので、そのままプロンプトに入力してEnter
+(値がコマンド履歴やログに残らない方式)。`wrangler.jsonc`には一切書き込まれず、
+Cloudflare側で暗号化保存される。
+
+登録済みsecretの一覧確認(値は表示されない、名前のみ):
+
+```
+bunx wrangler secret list
+```
+
 ## デプロイ
 
 ```
